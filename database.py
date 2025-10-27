@@ -9,20 +9,13 @@ def baca(path):
         data = csv.DictReader(csvfile)
         return list(data)
 
-# Menambahkan "append" data ke database
-def tambah(path, data):
-    with open(path, mode="a", newline="", encoding="utf-8") as csvfile:
-        fields = [*data[0]]
-        writer = csv.DictWriter(csvfile, fields)
-        writer.writerows(data)
-
 # Menulis ulang seluruh data ke database
 def tulis(path, data):
     with open(path, mode="w", newline="", encoding="utf-8") as csvfile:
         fields = [*data[0]]
-        writer = csv.DictWriter(csvfile, fields)
+        writer = csv.DictWriter(csvfile, fieldnames=fields)
+        writer.writeheader()
         writer.writerows(data)
 
 daftar_stasiun = baca("./db/stasiun.csv")
 daftar_kartu = baca("./db/kartu.csv")
-daftar_dalam_perjalanan = [] # In-memory, supaya lebih cepet
