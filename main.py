@@ -1,71 +1,40 @@
-stasiun_nama = ["Braga", "Cimahi", "Cimarga"]
-stasiun_jarak = [0, 5, 9]
-kartu_nomor = ["Ganteng676869"]
-kartu_saldo = []
-kartu_stasiun_masuk = [""]
+"""
+Entry-point aplikasi
+"""
+if __name__ != "__main__":
+    raise "Harus dijalankan secara langsung!"
 
-# Hitung jarak dari destinasi awal ke destinasi akhir
-def hitung_jarak(awal: str, akhir: str) -> int:
-    indeks_awal = indeks_akhir = 0
+import stasiun
+import tarif
+import helper
+import database
 
-    while(stasiun_nama[indeks_awal] != awal):
-        indeks_awal += 1
-    
-    while(stasiun_nama[indeks_akhir] != akhir):
-        indeks_akhir += 1
+helper.bersihkan_layar()
+kartu_penumpang = None
 
-    jarak = abs(stasiun_jarak[indeks_akhir]-stasiun_jarak[indeks_awal])
-    return jarak
+while True:
+    id_penumpang = input("Silakan masukkan ID kartu Anda: ")
+    kartu_penumpang = helper.cari(database.daftar_kartu, "ID", id_penumpang)
 
-# Hitung tarif berdasarkan jarak
-def hitung_tarif(jarak: int) -> int:
-    tarif = 3000
-    
-    if jarak > 25:
-        tarif += (jarak - 25) * 100
-    
-    return tarif
+    if len(id_penumpang) != 10 or id_penumpang != id_penumpang.upper():
+        print("ID yang dimasukkan tidak valid!")
+        continue
 
-# Bla
-def masuk_stasiun(nomor: str, stasiun: str):
-    indeks_kartu = 0
+    if not kartu_penumpang:
+        print("\nMaaf, kartu Tidak Terdaftar!")
+        helper.tunggu(0.8)
+        helper.bersihkan_layar()
+        continue
     
-    while indeks_kartu < len(kartu_nomor):
-        if kartu_nomor[indeks_kartu] == nomor:
-            break
-        indeks_kartu += 1
-    
-    if indeks_kartu == len(kartu_nomor):
-        # Nanti diganti
-        raise "Gak ada le"
-    
-    # if kartu_stasiun_masuk[indeks_kartu]:
-    #     # Nanti diganti
-    #     raise "Udah masuk woy"
-    
-    kartu_stasiun_masuk[indeks_kartu] = stasiun
+    break
 
-# Bla
-def keluar_stasiun(nomor: str, stasiun: str):
-    indeks_kartu = 0
-    
-    while indeks_kartu < len(kartu_nomor):
-        if kartu_nomor[indeks_kartu] == nomor:
-            break
-        indeks_kartu += 1
-    
-    if indeks_kartu == len(kartu_nomor):
-        # Nanti diganti
-        raise "Gak ada kartu woi"
-    
-    jarak = hitung_jarak(kartu_stasiun_masuk[indeks_kartu], stasiun)
-    tarif = hitung_tarif(jarak)
-    
-    if kartu_saldo[indeks_kartu] < tarif:
-        raise "Top up dulu woiii"
-    
-    kartu_saldo[indeks_kartu] -= tarif
-    kartu_stasiun_masuk[indeks_kartu] = ""
+helper.bersihkan_layar()
+print(
+    f"ID: {kartu_penumpang["ID"]}\n",
+    f"Nama: {kartu_penumpang["Nama"]}\n",
+    f"Saldo: Rp{int(kartu_penumpang["Saldo"]):,}".replace(",","."),
+    sep=""
+)
 
-
-print(hitung_tarif(hitung_jarak("Braga", "Cimarga")))
+print("\n")
+    
