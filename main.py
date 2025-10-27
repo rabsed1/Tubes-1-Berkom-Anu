@@ -19,8 +19,7 @@ waktu_tempuh = 0
 jarak_tempuh = 0
 
 while True:
-    # id_kartu = input("ID Kartu Tap-in: ")
-    id_kartu = "AAAAAAAAAA"
+    id_kartu = input("ID Kartu Tap-in: ")
     data_kartu = helper.cari(database.daftar_kartu, "ID", id_kartu)
 
     if len(id_kartu) != 10 or id_kartu != id_kartu.upper():
