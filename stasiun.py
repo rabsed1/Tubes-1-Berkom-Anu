@@ -2,7 +2,7 @@
 Menghitung jarak dan keeping track penumpang
 """
 from helper import cari
-from database import daftar_kartu, daftar_stasiun
+from database import daftar_stasiun
 
 # Menghitung jarak dua stasiun
 def hitung_jarak(stasiun_awal, stasiun_akhir):
