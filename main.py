@@ -9,7 +9,6 @@ import tarif
 import helper
 import database
 
-helper.bersihkan_layar()
 data_kartu = None
 data_stasiun_awal = None
 data_stasiun_akhir = None
@@ -21,6 +20,8 @@ status_pembayaran = None
 
 
 # =============== Tahap 1: Tap-in ===============
+helper.bersihkan_layar()
+
 while True:
     print(
         f"=" * 40,
@@ -72,10 +73,17 @@ while True:
         sep="\n"
     )
 
+    # Menampilkan daftar stasiun, ditawarkan oleh sistem.
+    maks_len = len(str(len(database.daftar_stasiun))) # untuk padding
+    for data_stasiun in database.daftar_stasiun:
+        print(f"{data_stasiun["Indeks"].zfill(maks_len)}. ({data_stasiun["ID"]}) {data_stasiun["Nama"]}")
+
+    print("\n")
+
     # Menentukan stasiun awal dan arah kereta
     # Harusnya, hal ini dilakukan secara otomatis oleh sistem di stasiun
-    stasiun_awal = input("Stasiun awal (nama): ")
-    arah_kereta = input("Arah kereta (-1 atau 1): ")
+    stasiun_awal = input("Stasiun awal (indeks): ").strip()
+    arah_kereta = input("Arah kereta (-1 atau 1): ").strip()
 
     # Jika stasiun gagal memberikan:
     #   1. stasiun_awal tidak ditentukan
@@ -88,7 +96,7 @@ while True:
         helper.bersihkan_layar()
         continue
 
-    data_stasiun_awal = helper.cari(database.daftar_stasiun, "Nama", stasiun_awal)
+    data_stasiun_awal = helper.cari(database.daftar_stasiun, "Indeks", stasiun_awal)
     
     # Menentukan apakah arah dan stasiun tempat penumpang naik valid.
     # Tidak valid jika:
@@ -140,8 +148,8 @@ while indeks_sekarang != end:
     stasiun_hilir = database.daftar_stasiun[indeks_sekarang+arah_kereta]
 
     # Menghitung waktu tempuh antarstasiun dan waktu tempuh total
-    # Waktu tempuh antarstasiun = jarak * 7 menit
-    waktu_tempuh = stasiun.hitung_jarak(stasiun_hulu["Nama"], stasiun_hilir["Nama"]) * 7
+    # Waktu tempuh antarstasiun = jarak * 3 menit
+    waktu_tempuh = stasiun.hitung_jarak(stasiun_hulu["Nama"], stasiun_hilir["Nama"]) * 3
     waktu_tempuh_total += waktu_tempuh
 
     # Countdown
@@ -178,7 +186,7 @@ while indeks_sekarang != end:
     # Jika bukan di stasiun penghujung
     # Tanyakan ke sistem apakah penumpang sudah turun
     if indeks_sekarang - end:
-        turun = input("Turun? (y/n) ")
+        turun = input("Turun? (y/n) ").strip()
         if turun == "y": break
     
     helper.bersihkan_layar()
