@@ -22,13 +22,24 @@ status_pembayaran = None
 
 # =============== Tahap 1: Tap-in ===============
 while True:
+    print(
+        f"=" * 40,
+        helper.TC_TEBAL + "CLS™ oleh KA-ITB".center(40) + helper.TUTUP,
+        f" ",
+        f"Versi    : 2.1-10a (LTS)",
+        f"Lisensi  : GPL-3.0-only",
+        f"Gerbang  : 1 (In)",
+        f"=" * 40,
+        sep="\n"
+    )
+
     id_kartu = input("ID Kartu Tap-in: ")
     data_kartu = helper.cari(database.daftar_kartu, "ID", id_kartu)
 
     # Jika ID yang diberikan tidak valid
     # Gerbang tidak akan terbuka
     if len(id_kartu) != 10 or id_kartu != id_kartu.upper():
-        print("ID yang dimasukkan tidak valid!")
+        print(f"\n{helper.TC_MERAH}ID yang dimasukkan tidak valid!{helper.TUTUP}")
         helper.tunggu(0.8)
         helper.bersihkan_layar()
         continue
@@ -36,11 +47,13 @@ while True:
     # Jika kartu tidak ada di daftar kartu -> kartu kedaluwarsa
     # Gerbang tidak akan terbuka
     if not data_kartu:
-        print("\nMaaf, kartu sudah kadaluwarsa!")
+        print(f"\n{helper.TC_MERAH}Kartu sudah kedaluwarsa!{helper.TUTUP}")
         helper.tunggu(0.8)
         helper.bersihkan_layar()
         continue
     
+    helper.simulasi_progress("Sedang mengambil data", 3)
+
     helper.bersihkan_layar()
     break
 
@@ -50,7 +63,7 @@ while True:
     # Menampilkan data kartu ke log
     print(
         f"=" * 40,
-        f"DATA KARTU".center(40),
+        helper.TC_TEBAL + "DATA KARTU".center(40) + helper.TUTUP,
         f" ",
         f"ID    : {data_kartu["ID"]}",
         f"Nama  : {data_kartu["Nama"]}",
@@ -70,7 +83,7 @@ while True:
     #   3. arah_kereta bukan -1 atau 1
     # Gerbang akan menampilkan error yang mencetak: "Panggil petugas"
     if not stasiun_awal or (arah_kereta != "-1" and arah_kereta != "1"):
-        print("\nSistem error! (silakan coba lagi atau panggil petugas)")
+        print(f"\n{helper.TC_MERAH}Sistem error! (panggil petugas){helper.TUTUP}")
         helper.tunggu(0.8)
         helper.bersihkan_layar()
         continue
@@ -82,14 +95,14 @@ while True:
     #   1. stasiun tempat penumpang naik tidak ada
     #   2. naik di stasiun penghujung awal, tetapi arah -1
     #   3. naik di stasiun penghujung akhir, tetapi arah 1
-    arah_dan_stasiun_valid = data_stasiun_awal or \
-        (data_stasiun_awal["Indeks"] == "1" and arah_kereta != "-1") \
-        (data_stasiun_awal["Indeks"] == len(database.daftar_stasiun) + 1 and arah_kereta != "1")
+    arah_dan_stasiun_valid = data_stasiun_awal and \
+        (data_stasiun_awal["Indeks"] != "1" or arah_kereta != "-1") and \
+        (data_stasiun_awal["Indeks"] != str(len(database.daftar_stasiun)) or arah_kereta != "1")
     
     # Jika tidak valid,
     # Gerbang akan menampilkan error yang mencetak: "Panggil petugas"
     if not arah_dan_stasiun_valid:
-        print("\nSistem error! (silakan coba lagi atau panggil petugas)") # Harusnya tidak error
+        print(f"\n{helper.TC_MERAH}Sistem error! (panggil petugas){helper.TUTUP}")
         helper.tunggu(0.8)
         helper.bersihkan_layar()
         continue
@@ -172,16 +185,22 @@ while indeks_sekarang != end:
 
 # =============== Tahap 4: Turun dan Tap out ===============
 # Simulasi penumpang turun dari kereta
-waktu_turun = 3
-i = 0
-while waktu_turun >= 0:
-    print(f"Penumpang sedang turun{'.' * (i % 3 + 1)} {'' * 5}")
-    helper.pindah_kursor(1)
-    helper.tunggu(0.5)
-    waktu_turun -= 0.5
-    i += 1
+helper.simulasi_progress("Penumpang sedang turun", 3)
 
 helper.bersihkan_layar()
+helper.pindah_kursor(8)
+
+print(
+    f"=" * 40,
+    helper.TC_TEBAL + "CLS™ oleh KA-ITB".center(40) + helper.TUTUP,
+    f" ",
+    f"Versi    : 2.1-10a (LTS)",
+    f"Lisensi  : GPL-3.0-only",
+    f"Gerbang  : 3 (Out)",
+    f"=" * 40,
+    sep="\n"
+)
+helper.simulasi_progress("Sedang memproses pembayaran", 3)
 
 # Ambil data stasiun tempat penumpang turun, jarak tempuh total, dan tarif perjlanan
 data_stasiun_akhir = database.daftar_stasiun[indeks_sekarang]
@@ -191,25 +210,28 @@ tarif_perjalanan = tarif.hitung_tarif(jarak_tempuh_total)
 # Jika saldo tidak cukup, atau dengan kata lain saldo < tarif,
 # Gerbang tidak akan terbuka, dan mencetak pesan: "Saldo tidak cukup"
 if tarif_perjalanan > int(data_kartu["Saldo"]):
-    status_pembayaran = "Gagal"
+    status_pembayaran = helper.TC_MERAH + "Gagal!" + helper.TUTUP
 else:
     # Jika tidak, update saldo pengguna yang telah dikurangi dengan tarif ke database
     indeks_kartu = int(data_kartu["Indeks"]) - 1
     database.daftar_kartu[indeks_kartu]["Saldo"] = int(data_kartu["Saldo"]) - tarif_perjalanan
     database.tulis("./db/kartu.csv", database.daftar_kartu)
-    status_pembayaran = "Suskes"
+    status_pembayaran = helper.TC_HIJAU + "Suskes!" + helper.TUTUP
 
 # Tampilkan historis perjalanan penumpang
+helper.bersihkan_layar()
+
 print(
-    f"=" * 40,
-    f"DATA PERJALANAN".center(40),
+    f"=" * 50,
+    helper.TC_TEBAL + "DATA PERJALANAN".center(50) + helper.TUTUP,
     f" ",
+    f"Waktu turun   : {helper.waktu_saat_ini()}",
     f"Stasiun turun : {data_stasiun_akhir["Nama"]} ({data_stasiun_akhir["ID"]})",
     f"Jarak tempuh  : {jarak_tempuh_total} km",
     f"Waktu tempuh  : {waktu_tempuh_total} menit",
     f"Tarif         : Rp{int(tarif_perjalanan):,}".replace(",","."),
-    f"Pembayaran    : {status_pembayaran}!",
-    f"=" * 40,
+    f"Pembayaran    : {status_pembayaran}",
+    f"=" * 50,
     sep="\n"
 )
 
