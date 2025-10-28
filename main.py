@@ -15,29 +15,39 @@ data_stasiun_awal = None
 data_stasiun_akhir = None
 arah_kereta = None
 arah_kereta_dari_stasiun = None
-waktu_tempuh = 0
-jarak_tempuh = 0
+waktu_tempuh_total = 0
+jarak_tempuh_total = 0
+status_pembayaran = None
 
+
+# =============== Tahap 1: Tap-in ===============
 while True:
     id_kartu = input("ID Kartu Tap-in: ")
     data_kartu = helper.cari(database.daftar_kartu, "ID", id_kartu)
 
+    # Jika ID yang diberikan tidak valid
+    # Gerbang tidak akan terbuka
     if len(id_kartu) != 10 or id_kartu != id_kartu.upper():
-        print("ID yang dimasukkan tidak valid!") # Gerbang tidak dibuka, error ditampilkan
+        print("ID yang dimasukkan tidak valid!")
         helper.tunggu(0.8)
         helper.bersihkan_layar()
         continue
 
+    # Jika kartu tidak ada di daftar kartu -> kartu kedaluwarsa
+    # Gerbang tidak akan terbuka
     if not data_kartu:
-        print("\nMaaf, kartu sudah kadaluwarsa!") # Gerbang tidak dibuka, error ditampilkan
+        print("\nMaaf, kartu sudah kadaluwarsa!")
         helper.tunggu(0.8)
         helper.bersihkan_layar()
         continue
     
-    # helper.bersihkan_layar()
+    helper.bersihkan_layar()
     break
 
+
+# =============== Tahap 2: Penentuan tujuan dan arah ===============
 while True:
+    # Menampilkan data kartu ke log
     print(
         f"=" * 40,
         f"DATA KARTU".center(40),
@@ -49,30 +59,36 @@ while True:
         sep="\n"
     )
 
+    # Menentukan stasiun awal dan arah kereta
+    # Harusnya, hal ini dilakukan secara otomatis oleh sistem di stasiun
     stasiun_awal = input("Stasiun awal (nama): ")
     arah_kereta = input("Arah kereta (-1 atau 1): ")
 
+    # Jika stasiun gagal memberikan:
+    #   1. stasiun_awal tidak ditentukan
+    #   2. arah_kereta tidak ada
+    #   3. arah_kereta bukan -1 atau 1
+    # Gerbang akan menampilkan error yang mencetak: "Panggil petugas"
     if not stasiun_awal or (arah_kereta != "-1" and arah_kereta != "1"):
-        print("\nSistem error! (silakan coba lagi atau panggil petugas)") # Harusnya tidak error
+        print("\nSistem error! (silakan coba lagi atau panggil petugas)")
         helper.tunggu(0.8)
         helper.bersihkan_layar()
         continue
-    
+
     data_stasiun_awal = helper.cari(database.daftar_stasiun, "Nama", stasiun_awal)
-
-    if not data_stasiun_awal:
-        print("\nSistem error! (silakan coba lagi atau panggil petugas)") # Harusnya tidak error
-        helper.tunggu(0.8)
-        helper.bersihkan_layar()
-        continue
-
-    if data_stasiun_awal["Indeks"] == "1" and arah_kereta == "-1":
-        print("\nSistem error! (silakan coba lagi atau panggil petugas)") # Harusnya tidak error
-        helper.tunggu(0.8)
-        helper.bersihkan_layar()
-        continue
-
-    if data_stasiun_awal["Indeks"] == len(database.daftar_stasiun) + 1 and arah_kereta == "1":
+    
+    # Menentukan apakah arah dan stasiun tempat penumpang naik valid.
+    # Tidak valid jika:
+    #   1. stasiun tempat penumpang naik tidak ada
+    #   2. naik di stasiun penghujung awal, tetapi arah -1
+    #   3. naik di stasiun penghujung akhir, tetapi arah 1
+    arah_dan_stasiun_valid = data_stasiun_awal or \
+        (data_stasiun_awal["Indeks"] == "1" and arah_kereta != "-1") \
+        (data_stasiun_awal["Indeks"] == len(database.daftar_stasiun) + 1 and arah_kereta != "1")
+    
+    # Jika tidak valid,
+    # Gerbang akan menampilkan error yang mencetak: "Panggil petugas"
+    if not arah_dan_stasiun_valid:
         print("\nSistem error! (silakan coba lagi atau panggil petugas)") # Harusnya tidak error
         helper.tunggu(0.8)
         helper.bersihkan_layar()
@@ -84,10 +100,16 @@ while True:
     helper.bersihkan_layar()
     break
 
+
+# =============== Tahap 3: Simulasi tracking perjalanan ===============
 id_stasiun_ujung_awal = database.daftar_stasiun[0]["ID"]
 id_stasiun_ujung_akhir = database.daftar_stasiun[-1]["ID"]
-start = end = 0
+start = end = 0 # Indeks stasiun naik dan penghujung rute
 
+# Setup nilai start dan end, dan pesan arah_kereta_dari_stasiun
+# Ada 2 kasus:
+#   1. Jika arah_kereta == 1: start < end
+#   2. Jika arah_kereta == -1: start > end
 if arah_kereta == 1:
     arah_kereta_dari_stasiun = f"{id_stasiun_ujung_awal}-{id_stasiun_ujung_akhir}"
     start = int(data_stasiun_awal["Indeks"]) - 1
@@ -97,73 +119,99 @@ else:
     start = int(data_stasiun_awal["Indeks"]) - 1
     end = 0
 
-i = start
-while i != end:
-    stasiun_hulu = database.daftar_stasiun[i]
-    stasiun_hilir = database.daftar_stasiun[i+arah_kereta]
+indeks_sekarang = start
 
-    t = stasiun.hitung_jarak(stasiun_hulu["Nama"], stasiun_hilir["Nama"]) * 7
-    waktu_tempuh += t
+while indeks_sekarang != end:
+    # Hulu = dari, hilir = ke
+    stasiun_hulu = database.daftar_stasiun[indeks_sekarang]
+    stasiun_hilir = database.daftar_stasiun[indeks_sekarang+arah_kereta]
 
-    while t > 0:
+    # Menghitung waktu tempuh antarstasiun dan waktu tempuh total
+    # Waktu tempuh antarstasiun = jarak * 7 menit
+    waktu_tempuh = stasiun.hitung_jarak(stasiun_hulu["Nama"], stasiun_hilir["Nama"]) * 7
+    waktu_tempuh_total += waktu_tempuh
+
+    # Countdown
+    while waktu_tempuh > 0:
         print(
             f"=" * 40,
             f"{stasiun_hulu["Nama"]} --> {stasiun_hilir["Nama"]}".center(40),
             f"Sedang dalam perjalanan...".center(40),
-            f"{i} {end}",
-            f"arah kereta: {arah_kereta_dari_stasiun}              ",
-            f"sampai dalam: {t:.1f} menit    ".replace(".",","),
+            f" ",
+            f"arah kereta: {arah_kereta_dari_stasiun} {' '*20}",
+            f"sampai dalam: {waktu_tempuh:.1f} menit    ".replace(".",","),
             f"=" * 40,
             sep="\n"
         )
         
         helper.tunggu(0.1)
-        print("\033[7A\033[2K", end="")
-        t -= 0.1
+        helper.pindah_kursor(7)
+        waktu_tempuh -= 0.1
 
+    # Tampilkan pesan kedatangan
     print(
         f"=" * 40,
         f"Telah sampai di stasiun".center(40),
         f'"{stasiun_hilir["Nama"].capitalize()}"'.center(40),
         f" ",
         f" " * 40,
-        f"arah kereta: {arah_kereta_dari_stasiun}              ",
+        f"arah kereta: {arah_kereta_dari_stasiun} {' '*20}",
         f"=" * 40,
         sep="\n"
     )
 
-    i += arah_kereta
+    indeks_sekarang += arah_kereta
 
-    if i-end:
+    # Jika bukan di stasiun penghujung
+    # Tanyakan ke sistem apakah penumpang sudah turun
+    if indeks_sekarang - end:
         turun = input("Turun? (y/n) ")
-
-        if turun == "y": 
-            helper.bersihkan_layar()
-            break
+        if turun == "y": break
     
     helper.bersihkan_layar()
 
-data_stasiun_akhir = database.daftar_stasiun[i]
-jarak_tempuh = stasiun.hitung_jarak(data_stasiun_awal["Nama"], data_stasiun_akhir["Nama"])
-tarif_perjalanan = tarif.hitung_tarif(jarak_tempuh)
+# =============== Tahap 4: Turun dan Tap out ===============
+# Simulasi penumpang turun dari kereta
+waktu_turun = 3
+i = 0
+while waktu_turun >= 0:
+    print(f"Penumpang sedang turun{'.' * (i % 3 + 1)} {'' * 5}")
+    helper.pindah_kursor(1)
+    helper.tunggu(0.5)
+    waktu_turun -= 0.5
+    i += 1
 
+helper.bersihkan_layar()
+
+# Ambil data stasiun tempat penumpang turun, jarak tempuh total, dan tarif perjlanan
+data_stasiun_akhir = database.daftar_stasiun[indeks_sekarang]
+jarak_tempuh_total = stasiun.hitung_jarak(data_stasiun_awal["Nama"], data_stasiun_akhir["Nama"])
+tarif_perjalanan = tarif.hitung_tarif(jarak_tempuh_total)
+
+# Jika saldo tidak cukup, atau dengan kata lain saldo < tarif,
+# Gerbang tidak akan terbuka, dan mencetak pesan: "Saldo tidak cukup"
 if tarif_perjalanan > int(data_kartu["Saldo"]):
-    print("\nSaldo tidak cukup!\n") # Waduh bokek
-    helper.tunggu(0.8)
-    raise
+    status_pembayaran = "Gagal"
+else:
+    # Jika tidak, update saldo pengguna yang telah dikurangi dengan tarif ke database
+    indeks_kartu = int(data_kartu["Indeks"]) - 1
+    database.daftar_kartu[indeks_kartu]["Saldo"] = int(data_kartu["Saldo"]) - tarif_perjalanan
+    database.tulis("./db/kartu.csv", database.daftar_kartu)
+    status_pembayaran = "Suskes"
 
+# Tampilkan historis perjalanan penumpang
 print(
     f"=" * 40,
     f"DATA PERJALANAN".center(40),
     f" ",
     f"Stasiun turun : {data_stasiun_akhir["Nama"]} ({data_stasiun_akhir["ID"]})",
-    f"Jarak tempuh  : {jarak_tempuh} km",
-    f"Waktu tempuh  : {waktu_tempuh} menit",
+    f"Jarak tempuh  : {jarak_tempuh_total} km",
+    f"Waktu tempuh  : {waktu_tempuh_total} menit",
     f"Tarif         : Rp{int(tarif_perjalanan):,}".replace(",","."),
+    f"Pembayaran    : {status_pembayaran}!",
     f"=" * 40,
     sep="\n"
 )
 
-indeks_kartu = int(data_kartu["Indeks"]) - 1
-database.daftar_kartu[indeks_kartu]["Saldo"] = int(data_kartu["Saldo"]) - tarif_perjalanan
-database.tulis("./db/kartu.csv", database.daftar_kartu)
+# Konfirmasi keluar dari program
+Konfirmasi_keluar = input("Pencet apapun untuk keluar...")
