@@ -40,7 +40,7 @@ WN_TUTUP_ = "\033[0m"
 # CONFIG WAKTU (disingkat WK) (dalam detik)
 WK_SIMUL_PROGRESS = 3
 WK_SIMUL_ERROR = 0.8
-WK_SIMUL_TEMPUH = 4
+WK_SIMUL_TEMPUH = 2
 WK_CONTD_TRACKER = 0.1
 WK_CONTD_PROGRESS = 0.5
 
@@ -70,8 +70,9 @@ status_pembayaran = None
 with open("./kartu.csv", newline="", encoding="utf-8") as csvfile:
     daftar_kartu = list(csv_baca(csvfile))
     jumlah_kartu = len(daftar_kartu)
+    jumlah_kartu = jumlah_kartu if jumlah_kartu < DB_KARTU_ENT_MAKS else DB_KARTU_ENT_MAKS
 
-    for i in range(1, DB_KARTU_ENT_MAKS):
+    for i in range(1, jumlah_kartu):
         daftar_kartu_ID[i-1] = daftar_kartu[i][0]
         daftar_kartu_NAMA[i-1] = daftar_kartu[i][1]
         daftar_kartu_SALDO[i-1] = int(daftar_kartu[i][2])
@@ -81,8 +82,9 @@ with open("./kartu.csv", newline="", encoding="utf-8") as csvfile:
 with open("./stasiun.csv", newline="", encoding="utf-8") as csvfile:
     daftar_stasiun = list(csv_baca(csvfile))
     jumlah_stasiun = len(daftar_stasiun)
+    jumlah_stasiun = jumlah_stasiun if jumlah_stasiun < DB_STASIUN_ENT_MAKS else DB_STASIUN_ENT_MAKS
 
-    for i in range(1, DB_STASIUN_ENT_MAKS):
+    for i in range(1, jumlah_stasiun):
         daftar_stasiun_ID[i-1] = daftar_stasiun[i][0]
         daftar_stasiun_NAMA[i-1] = daftar_stasiun[i][1]
         daftar_stasiun_JARAK[i-1] = int(daftar_stasiun[i][2])
